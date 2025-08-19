@@ -70,11 +70,11 @@ blueprint:
       selector:
         select:
           options:
-            - cool
-            - heat
-            - heat_cool
-            - dry
-            - auto
+            - "cool"
+            - "heat"
+            - "heat_cool"
+            - "dry"
+            - "auto"
 
     low_power_mode:
       name: Energiesparmodus
@@ -82,8 +82,8 @@ blueprint:
       selector:
         select:
           options:
-            - fan_only
-            - off
+            - "fan_only"
+            - "off"
 
     turn_off_timer_eco:
       name: Timer für Energiesparmodus
@@ -113,12 +113,12 @@ blueprint:
     end_of_time_action:
       name: Aktion am Ende der Zeitspanne
       description: Klimagerät am Ende der Zeitspanne ausschalten oder in einen Modus wechseln.
-      default: off
+      default: "off"
       selector:
         select:
           options:
-            - off
-            - fan_only
+            - "off"
+            - "fan_only"
 
     turn_off_timer_end:
       name: Timer am Ende
@@ -140,7 +140,7 @@ blueprint:
 
     notification_service:
       name: Benachrichtigungsdienst
-      description: Service zum Senden der Nachrichten (z.B. "notify.mobile_app_dein_handys").
+      description: Service zum Senden der Nachrichten (z.B. "notify.mobile_app_dein_handy").
       default: "notify.persistent_notification"
       selector:
         text: {}
@@ -148,13 +148,16 @@ blueprint:
     language:
       name: Benachrichtigungssprache
       description: Sprache für Statusbenachrichtigungen.
-      default: de
+      default: "de"
       selector:
         select:
           options:
-            - de
-            - en
-            - it
+            - "de"
+            - "en"
+            - "it"
+
+mode: restart
+max_exceeded: silent
 
 variables:
   notification_templates:
@@ -188,9 +191,6 @@ variables:
       schedule_start: "Gestione clima attivata ({{ start_time }} - {{ end_time }})"
       schedule_end: "Gestione clima conclusa. Azione: {{ action }}"
 
-mode: restart
-max_exceeded: silent
-
 trigger:
   - platform: state
     entity_id: !input master_enable
@@ -204,7 +204,6 @@ trigger:
     at: !input start_time
   - platform: time
     at: !input end_time
-  # Neustart Home Assistant, damit Blueprint nach Restart korrekt läuft
   - platform: homeassistant
     event: start
 
@@ -340,7 +339,7 @@ action:
                   - service: climate.set_hvac_mode
                     data:
                       entity_id: !input climate_entity
-                      hvac_mode: fan_only
+                      hvac_mode: "fan_only"
           - if:
               - condition: template
                 value_template: "{{ enable_notifications }}"
@@ -350,4 +349,3 @@ action:
                   message: "{{ notification_templates[language]['schedule_end'] | replace('{{ action }}', end_of_time_action ) }}"
 
 # Ende
-
