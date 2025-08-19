@@ -2,7 +2,7 @@ blueprint:
   name: "🌬️ Smartes Klima-Management (DE) 🌬️"
   description: >
     Ein Home Assistant Blueprint für optimal und automatisiert gesteuertes Klima-Management – jetzt komplett auf Deutsch!
-    Dieses Blueprint wurde für höchsten Komfort UND Energieersparnis entwickelt und getestet mit der Daikin Onecta Integration, funktioniert aber auch mit anderen Klimageräten, die eine Home Assistant "climate"-Entität unterstützen.
+    Dieses Blueprint wurde für höchsten Komfort UND Energieersparnis entwickelt und getestet mit der Daikin Onecta Integration, funktioniert aber auch mit anderen Klimageräten, die eine Home Assistant climate-Entität besitzen.
 
     Prinzip: Behalte jederzeit eine angenehme Temperatur – Deine Klimaanlage passt sich automatisch an und spart Energie, wenn der Komfort erreicht ist.
 
@@ -195,17 +195,23 @@ trigger:
   - platform: state
     entity_id: !input master_enable
     to: "on"
+    id: master_on
   - platform: state
     entity_id: !input master_enable
     to: "off"
+    id: master_off
   - platform: state
     entity_id: !input temperature_sensor
+    id: temp_sensor
   - platform: time
     at: !input start_time
+    id: start_time
   - platform: time
     at: !input end_time
+    id: end_time
   - platform: homeassistant
     event: start
+    id: ha_start
 
 condition: []
 
@@ -298,7 +304,7 @@ action:
           - condition: template
             value_template: "{{ not is_state(master_enable, 'off') }}"
           - condition: trigger
-            id: time
+            id: start_time
         sequence:
           - service: climate.set_hvac_mode
             data:
@@ -320,21 +326,19 @@ action:
   - choose:
       - conditions:
           - condition: trigger
-            id: time
-          - condition: time
-            after: !input end_time
+            id: end_time
         sequence:
           - choose:
               - conditions:
                   - condition: template
-                    value_template: "{{ !input end_of_time_action == 'off' }}"
+                    value_template: "{{ end_of_time_action == 'off' }}"
                 sequence:
                   - service: climate.turn_off
                     target:
                       entity_id: !input climate_entity
               - conditions:
                   - condition: template
-                    value_template: "{{ !input end_of_time_action == 'fan_only' }}"
+                    value_template: "{{ end_of_time_action == 'fan_only' }}"
                 sequence:
                   - service: climate.set_hvac_mode
                     data:
