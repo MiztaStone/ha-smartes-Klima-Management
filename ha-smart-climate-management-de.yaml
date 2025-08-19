@@ -1,0 +1,353 @@
+blueprint:
+  name: "🌬️ Smartes Klima-Management (DE) 🌬️"
+  description: >
+    Ein Home Assistant Blueprint für optimal und automatisiert gesteuertes Klima-Management – jetzt komplett auf Deutsch!
+    Dieses Blueprint wurde für höchsten Komfort UND Energieersparnis entwickelt und getestet mit der Daikin Onecta Integration, funktioniert aber auch mit anderen Klimageräten, die eine Home Assistant "climate"-Entität unterstützen.
+
+    Prinzip: Behalte jederzeit eine angenehme Temperatur – Deine Klimaanlage passt sich automatisch an und spart Energie, wenn der Komfort erreicht ist.
+
+  domain: automation
+  input:
+    master_enable:
+      name: Master-Schalter
+      description: Der Hauptschalter (`input_boolean`) für die gesamte Logik.
+      selector:
+        entity:
+          domain: input_boolean
+
+    climate_entity:
+      name: Klimagerät
+      description: Die `climate`-Entität deiner Klimaanlage.
+      selector:
+        entity:
+          domain: climate
+
+    temperature_sensor:
+      name: Temperatursensor
+      description: Sensor, der die aktuelle Raumtemperatur misst.
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+
+    target_temperature:
+      name: Zieltemperatur
+      description: Wunschtemperatur, die gehalten werden soll.
+      default: 24
+      selector:
+        number:
+          min: 16
+          max: 30
+          step: 0.5
+          unit_of_measurement: "°C"
+          mode: slider
+
+    turn_off_offset:
+      name: Abschalt-Offset
+      description: Gradzahl unter Zieltemperatur (z.B. 1.0°C), ab der auf Energiesparmodus gewechselt wird.
+      default: 1.0
+      selector:
+        number:
+          min: 0.5
+          max: 5
+          step: 0.1
+          unit_of_measurement: "°C"
+
+    turn_on_offset:
+      name: Einschalt-Offset
+      description: Gradzahl über Zieltemperatur (z.B. 1.5°C), ab der Komfortmodus wieder aktiviert wird.
+      default: 1.5
+      selector:
+        number:
+          min: 0.5
+          max: 5
+          step: 0.1
+          unit_of_measurement: "°C"
+
+    initial_climate_mode:
+      name: Modi bei Aktivierung
+      description: Der Modus beim Einschalten (z.B. "cool", "heat").
+      selector:
+        select:
+          options:
+            - cool
+            - heat
+            - heat_cool
+            - dry
+            - auto
+
+    low_power_mode:
+      name: Energiesparmodus
+      description: Modus bei Zieltemperatur erreicht (z.B. "fan_only", "off").
+      selector:
+        select:
+          options:
+            - fan_only
+            - off
+
+    turn_off_timer_eco:
+      name: Timer für Energiesparmodus
+      description: Zeit (Minuten) bis Abschaltung nach Energiesparmodus (0 = kein Timer).
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 120
+          step: 1
+          unit_of_measurement: "min"
+
+    start_time:
+      name: Startzeit
+      description: Zeitpunkt fürs automatische Starten (leer für manuell).
+      default: null
+      selector:
+        time: {}
+
+    end_time:
+      name: Endzeit
+      description: Zeitpunkt fürs automatische Beenden (leer für manuell).
+      default: null
+      selector:
+        time: {}
+
+    end_of_time_action:
+      name: Aktion am Ende der Zeitspanne
+      description: Klimagerät am Ende der Zeitspanne ausschalten oder in einen Modus wechseln.
+      default: off
+      selector:
+        select:
+          options:
+            - off
+            - fan_only
+
+    turn_off_timer_end:
+      name: Timer am Ende
+      description: Zeit (Minuten) bis Abschaltung am Ende der Zeitspanne (0 = kein Timer).
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 120
+          step: 1
+          unit_of_measurement: "min"
+
+    enable_notifications:
+      name: Benachrichtigungen aktivieren
+      description: Sollen Statusbenachrichtigungen gesendet werden?
+      default: true
+      selector:
+        boolean: {}
+
+    notification_service:
+      name: Benachrichtigungsdienst
+      description: Service zum Senden der Nachrichten (z.B. "notify.mobile_app_dein_handys").
+      default: "notify.persistent_notification"
+      selector:
+        text: {}
+
+    language:
+      name: Benachrichtigungssprache
+      description: Sprache für Statusbenachrichtigungen.
+      default: de
+      selector:
+        select:
+          options:
+            - de
+            - en
+            - it
+
+variables:
+  notification_templates:
+    de:
+      activated: "Klimaanlage aktiviert: Modus {{ mode }}, Zieltemperatur {{ target_temp }}°C."
+      deactivated: "Klimaanlage deaktiviert (Energiesparmodus oder AUS)."
+      eco_mode: "Energiesparmodus aktiviert (Lüfter oder AUS)."
+      comfort_restored: "Komforttemperatur wiederhergestellt, Klimaanlage neu gestartet."
+      timer_started: "Abschalt-Timer gestartet: Abschaltung in {{ minutes }} Min."
+      timer_canceled: "Abschalt-Timer abgebrochen."
+      schedule_start: "Klimamanagement gestartet ({{ start_time }} bis {{ end_time }})"
+      schedule_end: "Klimamanagement beendet. Aktion: {{ action }}"
+
+    en:
+      activated: "Air conditioner activated: mode {{ mode }}, target temperature {{ target_temp }}°C."
+      deactivated: "Air conditioner deactivated (energy-saving/fan mode)."
+      eco_mode: "Energy-saving mode activated (fan/standby)."
+      comfort_restored: "Comfort temperature restored – air conditioner restarted."
+      timer_started: "Shutdown timer started: will switch off in {{ minutes }} min."
+      timer_canceled: "Shutdown timer canceled."
+      schedule_start: "Climate management started ({{ start_time }} to {{ end_time }})"
+      schedule_end: "Climate management ended. Action: {{ action }}"
+
+    it:
+      activated: "Condizionatore attivato: modalità {{ mode }}, temperatura obiettivo {{ target_temp }}°C."
+      deactivated: "Condizionatore disattivato (modalità risparmio energetico/ventilatore)."
+      eco_mode: "Modalità risparmio energetico attivata (ventilatore/standby)."
+      comfort_restored: "Temperatura di comfort ripristinata – condizionatore riavviato."
+      timer_started: "Timer di spegnimento avviato: spegnimento fra {{ minutes }} min."
+      timer_canceled: "Timer di spegnimento annullato."
+      schedule_start: "Gestione clima attivata ({{ start_time }} - {{ end_time }})"
+      schedule_end: "Gestione clima conclusa. Azione: {{ action }}"
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input master_enable
+    to: "on"
+  - platform: state
+    entity_id: !input master_enable
+    to: "off"
+  - platform: state
+    entity_id: !input temperature_sensor
+  - platform: time
+    at: !input start_time
+  - platform: time
+    at: !input end_time
+  # Neustart Home Assistant, damit Blueprint nach Restart korrekt läuft
+  - platform: homeassistant
+    event: start
+
+condition: []
+
+action:
+  - choose:
+      # Master Enable OFF = alles deaktivieren
+      - conditions:
+          - condition: state
+            entity_id: !input master_enable
+            state: "off"
+        sequence:
+          - service: climate.turn_off
+            target:
+              entity_id: !input climate_entity
+          - if:
+              - condition: template
+                value_template: "{{ enable_notifications }}"
+            then:
+              - service: !input notification_service
+                data:
+                  message: "{{ notification_templates[language]['deactivated'] }}"
+
+      # Master Enable ON = Gerät ein-/umstellen
+      - conditions:
+          - condition: state
+            entity_id: !input master_enable
+            state: "on"
+        sequence:
+          - variables:
+              current_temp: "{{ states(!input temperature_sensor) | float }}"
+              target_temp: "{{ float(!input target_temperature) }}"
+              off_offset: "{{ float(!input turn_off_offset) }}"
+              on_offset: "{{ float(!input turn_on_offset) }}"
+              eco_mode: !input low_power_mode
+              climate_mode: !input initial_climate_mode
+              language: !input language
+              enable_notifications: !input enable_notifications
+
+          # Temperatur zu hoch: Klima einschalten
+          - if:
+              - condition: template
+                value_template: "{{ current_temp >= (target_temp + on_offset) }}"
+            then:
+              - service: climate.set_hvac_mode
+                data:
+                  entity_id: !input climate_entity
+                  hvac_mode: "{{ climate_mode }}"
+              - service: climate.set_temperature
+                data:
+                  entity_id: !input climate_entity
+                  temperature: "{{ target_temp }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ enable_notifications }}"
+                then:
+                  - service: !input notification_service
+                    data:
+                      message: "{{ notification_templates[language]['activated'] | replace('{{ mode }}', climate_mode) | replace('{{ target_temp }}', target_temp|string) }}"
+
+          # Temperatur zu niedrig: Eco-/Off-Modus aktivieren
+          - if:
+              - condition: template
+                value_template: "{{ current_temp <= (target_temp - off_offset) }}"
+            then:
+              - service: climate.set_hvac_mode
+                data:
+                  entity_id: !input climate_entity
+                  hvac_mode: "{{ eco_mode }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ enable_notifications }}"
+                then:
+                  - service: !input notification_service
+                    data:
+                      message: "{{ notification_templates[language]['eco_mode'] }}"
+
+          # Innerhalb Komfort-Range: Nichts ändern
+          - if:
+              - condition: template
+                value_template: >
+                  {{ (current_temp > (target_temp - off_offset))
+                      and (current_temp < (target_temp + on_offset)) }}
+            then:
+              - service: script.turn_off
+                data: {} # Platzhalter für evtl. spätere Aktionen
+
+  # Zeitbasierter Start
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ not is_state(master_enable, 'off') }}"
+          - condition: trigger
+            id: time
+        sequence:
+          - service: climate.set_hvac_mode
+            data:
+              entity_id: !input climate_entity
+              hvac_mode: !input initial_climate_mode
+          - service: climate.set_temperature
+            data:
+              entity_id: !input climate_entity
+              temperature: !input target_temperature
+          - if:
+              - condition: template
+                value_template: "{{ enable_notifications }}"
+            then:
+              - service: !input notification_service
+                data:
+                  message: "{{ notification_templates[language]['schedule_start'] | replace('{{ start_time }}', start_time) | replace('{{ end_time }}', end_time ) }}"
+
+  # Zeitbasierter Stopp
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: time
+          - condition: time
+            after: !input end_time
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ !input end_of_time_action == 'off' }}"
+                sequence:
+                  - service: climate.turn_off
+                    target:
+                      entity_id: !input climate_entity
+              - conditions:
+                  - condition: template
+                    value_template: "{{ !input end_of_time_action == 'fan_only' }}"
+                sequence:
+                  - service: climate.set_hvac_mode
+                    data:
+                      entity_id: !input climate_entity
+                      hvac_mode: fan_only
+          - if:
+              - condition: template
+                value_template: "{{ enable_notifications }}"
+            then:
+              - service: !input notification_service
+                data:
+                  message: "{{ notification_templates[language]['schedule_end'] | replace('{{ action }}', end_of_time_action ) }}"
+
+# Ende
+
